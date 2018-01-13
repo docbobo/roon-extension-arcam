@@ -11,7 +11,7 @@ const debug                = require('debug')('roon-extension-arcam'),
 var arcam = {};
 var roon = new RoonApi({
     extension_id:        'org.pruessmann.roon.arcam',
-    display_name:        'Arcam AVR',
+    display_name:        'Arcam AVR390/550/850/AV860/SR250',
     display_version:     '0.0.1',
     publisher:           'Doc Bobo',
     email:               'boris@pruessmann.org',
