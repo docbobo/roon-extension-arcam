@@ -1,6 +1,6 @@
-## Controlling Denon/Marantz AV receivers from Roon
+## Controlling Arcam AV receivers from Roon
 
-This project provides a Roon Volume Control extension that allows you to control volume and mute from within Roon. It does so by connecting the receiver via its network interface. Unfortunately, doing so will prevent other applications that rely on the Telnet-based communication to fail - at least my Denon AVR-3313 only accepts one of those connections at a time.
+This project provides a Roon Volume Control extension that allows you to control volume and mute from within Roon. It does so by connecting the receiver via its network interface.
 
 ## Installation
 
@@ -10,21 +10,21 @@ This project provides a Roon Volume Control extension that allows you to control
    * On Mac OS, you can use [homebrew](http://brew.sh) to install Node.js.
    * On Linux, you can use your distribution's package manager, but make sure it installs a recent Node.js. Otherwise just install from the above link.
 
-   The extension has been developed with Node v8.0.0. While it may work with older versions, it's not something that I've tested.
+   The extension has been developed with Node v8.4.0. While it may work with older versions, it's not something that I've tested.
 
 1. Install Git from https://git-scm.com/downloads.
    * Following the instructions for the Operating System you are running.
 
-1. Download the Denon/Marantz AVR extension.
+1. Download the Arcam AVR extension.
 
-   * Go to the [roon-extension-denon](https://github.com/docbobo/roon-extension-denon) page on [GitHub](https://github.com).
+   * Go to the [roon-extension-arcam](https://github.com/docbobo/roon-extension-arcam) page on [GitHub](https://github.com).
    * Click the green 'Clone or Download' button and select 'Download ZIP'.
 
 1. Extract the zip file in a local folder.
 
 1. Change directory to the extension in the local folder:
     ```
-    cd <local_folder>/roon-extension-denon
+    cd <local_folder>/roon-extension-arcam
     ```
     *Replace `<local_folder>` with the local folder path.*
 
