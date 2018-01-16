@@ -13,7 +13,7 @@ var arcam = {};
 var roon = new RoonApi({
     extension_id:        'org.pruessmann.roon.arcam',
     display_name:        'Arcam AVR390/550/850/AV860/SR250',
-    display_version:     '0.0.2',
+    display_version:     '0.0.3',
     publisher:           'Doc Bobo',
     email:               'boris@pruessmann.org',
     website:             'https://github.com/docbobo/roon-extension-arcam',
@@ -77,7 +77,7 @@ function setup_arcam_connection(host, keepalive) {
         svc_status.set_status("Not configured, please check settings.", true);
     } else {
         debug("Connecting to receiver...");
-        svc_status.set_status("Connecting to " + host + "...", false);
+        svc_status.set_status("Connecting to '" + host + "'...", false);
 
         arcam.client = new Arcam.ArcamClient(host);
         arcam.client.socket.setTimeout(0);
@@ -96,7 +96,7 @@ function setup_arcam_connection(host, keepalive) {
 
         arcam.client.on('close', (had_error) => {
             debug('Received onClose(%O): Reconnecting...', had_error);
-            svc_status.set_status("Connection closed by receiver. Reconnecting...", true);
+            svc_status.set_status("Connection closed. Reconnecting...", true);
 
             if (!arcam.reconnect) {
                 arcam.reconnect = setTimeout(() => {
@@ -111,7 +111,7 @@ function setup_arcam_connection(host, keepalive) {
 
         arcam.client.connect().then(() => {
             create_volume_control(arcam).then(() => {
-                svc_status.set_status("Connected to receiver", false);
+                svc_status.set_status("Connected to '" + host + "'", false);
             });
         }).catch((error) => {
             debug("setup_arcam_connection: Error during setup. Retrying...");
@@ -137,7 +137,7 @@ function create_volume_control(arcam) {
     if (!arcam.volume_control) {
         arcam.state = {
             display_name: "Main Zone",
-            volume_type:  "db",
+            volume_type:  "number",
             volume_min:   0,
             volume_max:   99,
             volume_step:  1,
@@ -186,6 +186,8 @@ function create_volume_control(arcam) {
 
             debug("Registering volume control extension");
             arcam.volume_control = svc_volume_control.new_device(device);
+        }).catch((error) => {
+            console.log(error);
         });
     }
 

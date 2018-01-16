@@ -64,7 +64,6 @@ class Connection extends EventEmitter {
 
             this.socket.once('error', (error) => {
                 reject(error);
-
                 this.socket.removeListener('connect', resolve);
             });
 

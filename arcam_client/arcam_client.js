@@ -5,6 +5,7 @@ const debug        = require('debug')('roon-extension-arcam:client'),
       Promise      = require('bluebird'),
       Connection   = require('./connection'),
       Options      = require('./options'),
+      Parser       = require("binary-parser").Parser,
       Buffer       = require('buffer').Buffer;
 
 /**
@@ -17,6 +18,23 @@ class ArcamClient extends Connection {
 
     constructor(host, port = 50000) {
         super(host, port);
+
+        this.requestParser = new Parser()
+            .uint8("startTransmission", { assert: 0x21 })
+            .uint8("zoneNumber")
+            .uint8("commandCode")
+            .uint8("dataLength")
+            .buffer("data", { type: "uint8", length: "dataLength"})
+            .uint8("endTransmission", { assert: 0x0d });
+
+        this.responseParser = new Parser()
+            .uint8("startTransmission", { assert: 0x21 })
+            .uint8("zoneNumber")
+            .uint8("commandCode")
+            .uint8("answerCode")
+            .uint8("dataLength")
+            .buffer("data", { type: "uint8", length: "dataLength"})
+            .uint8("endTransmission", { assert: 0x0d });
 
         this.commandTable = {
             'heartbeat': {
@@ -60,33 +78,18 @@ class ArcamClient extends Connection {
      */
     _onData(data) {
         if (typeof data === 'object') {
-            const buffer = Buffer.from(data);
-            debug("Received message: %O", buffer.toString('hex'));
+            const message = this.responseParser.parse(data);
+            debug("Received message: %O = %o", data.toString('hex'), message);
 
-            const st = buffer.readUInt8(0);
-            if (st != 0x21) {
-                // If the message doesn't start with the magic 0x21, let's ignore it.
-                return;
+            if (message.answerCode == 0x00) {
+                const results = this._applyCommandMapping(message);
+                results.forEach((result) => {
+                    // Only Main Zone support for now
+                    if (result.zoneNumber == 0x01) {
+                        this.emit(result.emit, result.value);
+                    }
+                });
             }
-
-            const zn = buffer.readUInt8(1);
-            const cc = buffer.readUInt8(2);
-            const ac = buffer.readUInt8(3);
-            if (ac != 0x00) {
-                return;
-            }
-
-            const dl = buffer.readUInt8(4);
-            const et = buffer.readUInt8(5 + dl);
-            if (et != 0x0d) {
-                // If the message doesn't end with the end marker, let's ignore it.
-                return;
-            }
-
-            const results = this._applyCommandMapping(cc, zn, buffer.slice(5, 5 + dl));
-            results.forEach((result) => {
-                this.emit(result.emit, result.value);
-            });
         }
     }
 
@@ -98,22 +101,22 @@ class ArcamClient extends Connection {
         }
     }
 
-    _applyCommandMapping(cc, zn, data) {
+    _applyCommandMapping(message) {
         const keys = _(this.commandTable).keys();
         const matches = [];
 
         _(keys).each((key) => {
             const handler = this.commandTable[key];
 
-            if (handler.commandCode === cc) {
+            if (handler.commandCode === message.commandCode) {
                 const matchResult = handler;
-                matchResult.zone = zn;
+                matchResult.zoneNumber = message.zoneNumber;
 
                 // If the event hook has a transform method call it before applying the result value
                 if (matchResult.transform) {
-                    matchResult.value = matchResult.transform(data);
+                    matchResult.value = matchResult.transform(message.data);
                 } else {
-                    matchResult.value = data.readUInt8(0);
+                    matchResult.value = message.data.readUInt8(0);
                 }
 
                 matches.push(matchResult);
@@ -123,7 +126,7 @@ class ArcamClient extends Connection {
         return matches;
     }
 
-    sendCommand(cc, parameter, hook) {
+    sendCommand(commandCode, parameters, hook) {
         return new Promise((resolve) => {
             if (typeof hook === 'string') {
                 this.once(hook, (result) => {
@@ -131,28 +134,22 @@ class ArcamClient extends Connection {
                 });
             }
 
-            var parameters;
-            if (parameter == null) {
-                parameters = [];
-            } else {
-                parameters = Array.isArray(parameter) ? parameter : [ parameter ];
+            if(!Array.isArray(parameters)) {
+                parameters = [parameters];
             }
 
-            const buffer = Buffer.alloc(5 + parameters.length);
-            buffer.writeUInt8(0x21, 0);        // Magic
-            buffer.writeUInt8(0x01, 1);        // Zone
-            buffer.writeUInt8(cc, 2);
-            buffer.writeUInt8(parameters.length, 3);
-            var i = 0;
-            for(i = 0; i < parameters.length; i++) {
-                buffer.writeUInt8(parameters[i], 4 + i);
-            }
-            buffer.writeUInt8(0x0d, 4 + i);
-
-            debug("Sending Command: %O", buffer.toString('hex'));
+            const requestMessage = Buffer.concat(
+                [
+                    Buffer.from([ 0x21, 0x01, commandCode, parameters.length ]),
+                    Buffer.from(parameters),
+                    Buffer.from([ 0x0d ])
+                ],
+                parameters.length + 5
+            );
+            debug("Sending Command: %O = %o", requestMessage.toString('hex'), this.requestParser.parse(requestMessage));
 
             return this
-                .write(buffer)
+                .write(requestMessage)
                 .then(() => {
                     if (typeof hook === 'undefined') {
                         resolve();
@@ -162,7 +159,7 @@ class ArcamClient extends Connection {
     }
 
     setVolume(volumeOptions) {
-        return this.sendCommand(0x0d, volumeOptions);
+        return this.sendCommand(Options.VolumeOptions.Command, volumeOptions);
     }
 
     /**
@@ -176,6 +173,7 @@ class ArcamClient extends Connection {
     }
 
     setMute(mute) {
+        // Muting the receiver is done via RC command emulation, thus the command code differs from the one on getMute.
         return this.sendCommand(0x08, [0x10, 0x0d]);
     }
 
