@@ -1,6 +1,6 @@
 {
     "name": "roon-extension-arcam",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Volume Control extension to control Arcam AV receivers AVR390/550/850/AV860/SR250 via network.",
     "main": "app.js",
     "author": "Doc Bobo <boris@pruessmann.org> (https://blog.pruessmann.org/)",

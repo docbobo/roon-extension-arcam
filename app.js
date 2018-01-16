@@ -2,6 +2,7 @@
 
 const debug                = require('debug')('roon-extension-arcam'),
       debug_keepalive      = require('debug')('roon-extension-arcam:keepalive'),
+      Promise              = require('bluebird'),
       Arcam                = require('./arcam_client'),
       RoonApi              = require('node-roon-api'),
       RoonApiSettings      = require('node-roon-api-settings'),
@@ -12,7 +13,7 @@ var arcam = {};
 var roon = new RoonApi({
     extension_id:        'org.pruessmann.roon.arcam',
     display_name:        'Arcam AVR390/550/850/AV860/SR250',
-    display_version:     '0.0.1',
+    display_version:     '0.0.2',
     publisher:           'Doc Bobo',
     email:               'boris@pruessmann.org',
     website:             'https://github.com/docbobo/roon-extension-arcam',
@@ -99,10 +100,11 @@ function setup_arcam_connection(host, keepalive) {
 
             if (!arcam.reconnect) {
                 arcam.reconnect = setTimeout(() => {
-                    arcam.client.connect();
-                    arcam.reconnect = null;
-
-                    svc_status.set_status("Connected to receiver", false);
+                    debug("Attempting to reconnect");
+                    arcam.client.connect().then(() => {
+                        arcam.reconnect = null;
+                        svc_status.set_status("Connected to receiver", false);
+                    });
                 }, 1000);
             }
         });
@@ -130,6 +132,7 @@ function setup_arcam_connection(host, keepalive) {
 
 function create_volume_control(arcam) {
     debug("create_volume_control: volume_control=%o", arcam.volume_control)
+
     var result = arcam.client;
     if (!arcam.volume_control) {
         arcam.state = {
@@ -142,6 +145,7 @@ function create_volume_control(arcam) {
 
         var device = {
             state: arcam.state,
+
             set_volume: function (req, mode, value) {
                 debug("set_volume: mode=%s value=%d", mode, value);
 
@@ -159,29 +163,26 @@ function create_volume_control(arcam) {
                     req.send_complete("Failed");
                 });
             },
+
             set_mute: function (req, inAction) {
                 debug("set_mute: action=%s", inAction);
 
                 const action = !this.state.is_muted ? "on" : "off";
-                arcam.client.setMute(action === "on" ? Arcam.Options.MuteOptions.On : Arcam.Options.MuteOptions.Off)
-                    .then(() => {
-                        debug("set_mute: Succeeded.");
+                arcam.client.setMute(action === "on" ? Arcam.Options.MuteOptions.On : Arcam.Options.MuteOptions.Off).then(() => {
+                    debug("set_mute: Succeeded.");
+                    req.send_complete("Success");
+                }).catch((error) => {
+                    debug("set_mute: Failed.");
 
-                        req.send_complete("Success");
-                    }).catch((error) => {
-                        debug("set_mute: Failed.");
-
-                        console.log(error);
-                        req.send_complete("Failed");
-                    });
+                    console.log(error);
+                    req.send_complete("Failed");
+                });
             }
         };
 
-        result = arcam.client.getVolume().then((val) => {
-            arcam.state.volume_value = val;
-            return arcam.client.getMute();
-        }).then((val) => {
-            arcam.state.is_muted = (val === Arcam.Options.MuteOptions.On);
+        result = Promise.join(arcam.client.getVolume(), arcam.client.getMute(), function(volume, is_muted) {
+            arcam.state.volume_value = volume;
+            arcam.state.is_muted = (is_muted === Arcam.Options.MuteOptions.On);
 
             debug("Registering volume control extension");
             arcam.volume_control = svc_volume_control.new_device(device);
