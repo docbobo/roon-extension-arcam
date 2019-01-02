@@ -1,6 +1,6 @@
 {
     "name": "roon-extension-arcam",
-    "version": "0.0.5",
+    "version": "0.0.6",
     "description": "Volume Control extension to control Arcam AV receivers AVR390/550/850/AV860/SR250 via network.",
     "main": "app.js",
     "author": "Doc Bobo <boris@pruessmann.org> (https://blog.pruessmann.org/)",
@@ -10,11 +10,11 @@
         "url": "https://github.com/docbobo/roon-extension-arcam"
     },
     "dependencies": {
-        "debug": "^3.1.0",
-        "bluebird": "^3.3.4",
-        "lodash": "^4.9.0",
         "binary-parser": "^1.3.0",
-        "node-roon-api": "github:roonlabs/node-roon-api#fc06320225d8f919663a785e387363e441f46261",
+        "bluebird": "^3.5.3",
+        "debug": "^3.1.0",
+        "lodash": "^4.9.0",
+        "node-roon-api": "github:roonlabs/node-roon-api#eec355dd7c1aa66cc3f9c0e710d37fc35f7d0112",
         "node-roon-api-settings": "github:roonlabs/node-roon-api-settings#67cd8ca156c5bcd01ea63833ceaaec6d6a79654d",
         "node-roon-api-status": "github:roonlabs/node-roon-api-status#504c918d6da267e03fbb4337befa71ca3d3c7526",
         "node-roon-api-volume-control": "github:roonlabs/node-roon-api-volume-control#56315d95344c9e0dc98c07c30a2de08727437b1e"

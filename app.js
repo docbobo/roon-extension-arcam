@@ -13,7 +13,7 @@ var arcam = {};
 var roon = new RoonApi({
     extension_id:        'org.pruessmann.roon.arcam',
     display_name:        'Arcam AVR390/550/850/AV860/SR250',
-    display_version:     '0.0.5',
+    display_version:     '0.0.6',
     publisher:           'Doc Bobo',
     email:               'boris@pruessmann.org',
     website:             'https://github.com/docbobo/roon-extension-arcam',
@@ -136,6 +136,7 @@ function create_volume_control(arcam) {
     var result = arcam.client;
     if (!arcam.volume_control) {
         arcam.state = {
+            control_key: 1,
             display_name: "Main Zone",
             volume_type:  "number",
             volume_min:   0,
@@ -145,7 +146,6 @@ function create_volume_control(arcam) {
 
         var device = {
             state: arcam.state,
-            control_key: 1,
 
             set_volume: function (req, mode, value) {
                 debug("set_volume: mode=%s value=%d", mode, value);
