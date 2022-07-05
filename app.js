@@ -106,6 +106,13 @@ function setup_arcam_connection(host, keepalive) {
             debug("Received onClose(%O): Reconnecting...", had_error);
             svc_status.set_status("Connection closed. Reconnecting...", true);
 
+            // Disable heartbeat while we are not connected. Will be set up again
+            // by the connect listener
+            if (arcam.keepalive) {
+                clearInterval(arcam.keepalive);
+                arcam.keepalive = null;
+            }
+
             if (!arcam.reconnect) {
                 arcam.reconnect = setTimeout(() => {
                     debug("Attempting to reconnect");
@@ -123,6 +130,14 @@ function setup_arcam_connection(host, keepalive) {
                 create_volume_control(arcam).then(() => {
                     svc_status.set_status("Connected to '" + host + "'", false);
                 });
+
+                // Only set up keepalive handler after we are connected
+                arcam.keepalive = setInterval(() => {
+                    // Make regular calls to heartbeat for keep-alive.
+                    arcam.client.heartbeat().then((val) => {
+                        debug_keepalive("Keep-Alive: heartbeat == %s", val);
+                    });
+                }, keepalive);
             })
             .catch((error) => {
                 debug("setup_arcam_connection: Error during setup. Retrying...");
@@ -131,13 +146,6 @@ function setup_arcam_connection(host, keepalive) {
                 console.log(error);
                 svc_status.set_status("Could not connect receiver: " + error, true);
             });
-
-        arcam.keepalive = setInterval(() => {
-            // Make regular calls to heartbeat for keep-alive.
-            arcam.client.heartbeat().then((val) => {
-                debug_keepalive("Keep-Alive: heartbeat == %s", val);
-            });
-        }, keepalive);
     }
     debug("setup_arcam_connection (" + host + ") - done.");
 }
