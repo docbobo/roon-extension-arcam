@@ -11,7 +11,7 @@ NAME=roon-extension-arcam
 FRIENDLY_NAME="Arcam AVR390/550/850/AV860/SR250"
 
 # Set the DESCRIPTION variable to a single line string that summarizes the function of your extension
-DESCRIPTION=""Roon Volume Control Extension for Arcam AVR390/550/850/AV860/SR250 receivers"
+DESCRIPTION="Roon Volume Control Extension for Arcam AVR390/550/850/AV860/SR250 receivers"
 
 # Set the VERSION variable to the version number of your extension
 VERSION=0.0.6
