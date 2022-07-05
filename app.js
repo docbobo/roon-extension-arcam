@@ -13,7 +13,7 @@ var arcam = {};
 var roon = new RoonApi({
     extension_id:        'org.pruessmann.roon.arcam',
     display_name:        'Arcam AVR390/550/850/AV860/SR250',
-    display_version:     '0.0.6',
+    display_version:     '0.0.7',
     publisher:           'Doc Bobo',
     email:               'boris@pruessmann.org',
     website:             'https://github.com/docbobo/roon-extension-arcam',
@@ -74,6 +74,7 @@ function setup_arcam_connection(host, keepalive) {
     if (arcam.client) { arcam.client.disconnect(); delete(arcam.client); }
 
     if (!host) {
+        debug("Not configured, please check settings.");
         svc_status.set_status("Not configured, please check settings.", true);
     } else {
         debug("Connecting to receiver...");
@@ -128,6 +129,7 @@ function setup_arcam_connection(host, keepalive) {
             });
         }, keepalive);
     }
+    debug("setup_arcam_connection (" + host + ") - done." );
 }
 
 function create_volume_control(arcam) {
@@ -221,4 +223,5 @@ function create_volume_control(arcam) {
 
 setup_arcam_connection(mysettings.hostname, mysettings.keepalive);
 
+debug("Starting Roon Discovery." );
 roon.start_discovery();
