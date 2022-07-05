@@ -124,6 +124,7 @@ function setup_arcam_connection(host, keepalive) {
 
         arcam.keepalive = setInterval(() => {
             // Make regular calls to heartbeat for keep-alive.
+            debug_keepalive("Adding Keep-Alive listener", val);
             arcam.client.heartbeat().then((val) => {
                 debug_keepalive("Keep-Alive: heartbeat == %s", val);
             });
