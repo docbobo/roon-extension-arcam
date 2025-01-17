@@ -1,12 +1,12 @@
-'use strict';
+"use strict";
 
-const debug        = require('debug')('roon-extension-arcam:client'),
-      _            = require('lodash'),
-      Promise      = require('bluebird'),
-      Connection   = require('./connection'),
-      Options      = require('./options'),
-      Parser       = require("binary-parser").Parser,
-      Buffer       = require('buffer').Buffer;
+const debug = require("debug")("roon-extension-arcam:client"),
+    _ = require("lodash"),
+    Promise = require("bluebird"),
+    Connection = require("./connection"),
+    Options = require("./options"),
+    Parser = require("binary-parser").Parser,
+    Buffer = require("buffer").Buffer;
 
 /**
  * The Arcam AVR RPC class.
@@ -15,7 +15,6 @@ const debug        = require('debug')('roon-extension-arcam:client'),
  * @extends Connection
  */
 class ArcamClient extends Connection {
-
     constructor(host, port = 50000) {
         super(host, port);
 
@@ -24,7 +23,7 @@ class ArcamClient extends Connection {
             .uint8("zoneNumber")
             .uint8("commandCode")
             .uint8("dataLength")
-            .buffer("data", { type: "uint8", length: "dataLength"})
+            .buffer("data", { type: "uint8", length: "dataLength" })
             .uint8("endTransmission", { assert: 0x0d });
 
         this.responseParser = new Parser()
@@ -33,40 +32,40 @@ class ArcamClient extends Connection {
             .uint8("commandCode")
             .uint8("answerCode")
             .uint8("dataLength")
-            .buffer("data", { type: "uint8", length: "dataLength"})
+            .buffer("data", { type: "uint8", length: "dataLength" })
             .uint8("endTransmission", { assert: 0x0d });
 
         this.commandTable = {
-            'heartbeat': {
+            heartbeat: {
                 commandCode: Options.HeartbeatOptions.Command,
                 /**
                  * @event heartbeat
-                */
-                emit: 'heartbeat'
+                 */
+                emit: "heartbeat",
             },
-            'masterVolume': {
+            masterVolume: {
                 commandCode: Options.VolumeOptions.Command,
                 /**
                  * @event masterVolumeChanged
                  * @param {object} volume The current volume
                  */
-                emit: 'masterVolumeChanged'
+                emit: "masterVolumeChanged",
             },
-            'mute': {
+            mute: {
                 commandCode: Options.MuteOptions.Command,
                 /**
                  * @event muteChanged
                  * @param {MuteOptions} mute The current mute status
                  */
-                emit: 'muteChanged'
-            }
+                emit: "muteChanged",
+            },
         };
 
-        this.on('data', (data) => {
+        this.on("data", (data) => {
             this._onData(data);
         });
 
-        this.on('error', (error) => {});
+        this.on("error", (error) => {});
     }
 
     /**
@@ -77,9 +76,9 @@ class ArcamClient extends Connection {
      * @param  {Buffer} data The incoming data
      */
     _onData(data) {
-        if (typeof data === 'object') {
+        if (typeof data === "object") {
             const message = this.responseParser.parse(data);
-            debug("Received message: %O = %o", data.toString('hex'), message);
+            debug("Received message: %O = %o", data.toString("hex"), message);
 
             if (message.answerCode == 0x00) {
                 const results = this._applyCommandMapping(message);
@@ -94,7 +93,7 @@ class ArcamClient extends Connection {
     }
 
     getEvent(key) {
-        if (typeof this.commandTable[key] !== 'undefined') {
+        if (typeof this.commandTable[key] !== "undefined") {
             return this.commandTable[key].emit;
         } else {
             return undefined;
@@ -128,34 +127,36 @@ class ArcamClient extends Connection {
 
     sendCommand(commandCode, parameters, hook) {
         return new Promise((resolve) => {
-            if (typeof hook === 'string') {
+            if (typeof hook === "string") {
                 this.once(hook, (result) => {
                     resolve(result);
                 });
             }
 
-            if(!Array.isArray(parameters)) {
+            if (!Array.isArray(parameters)) {
                 parameters = [parameters];
             }
 
             const requestMessage = Buffer.concat(
                 [
-                    Buffer.from([ 0x21, 0x01, commandCode, parameters.length ]),
+                    Buffer.from([0x21, 0x01, commandCode, parameters.length]),
                     Buffer.from(parameters),
-                    Buffer.from([ 0x0d ])
+                    Buffer.from([0x0d]),
                 ],
-                parameters.length + 5
+                parameters.length + 5,
             );
-            debug("Sending Command: %O = %o", requestMessage.toString('hex'), this.requestParser.parse(requestMessage));
+            debug(
+                "Sending Command: %O = %o",
+                requestMessage.toString("hex"),
+                this.requestParser.parse(requestMessage),
+            );
 
-            return this
-                .write(requestMessage)
-                .then(() => {
-                    if (typeof hook === 'undefined') {
-                        resolve();
-                    }
-                });
-        })
+            return this.write(requestMessage).then(() => {
+                if (typeof hook === "undefined") {
+                    resolve();
+                }
+            });
+        });
     }
 
     setVolume(volumeOptions) {
@@ -163,13 +164,17 @@ class ArcamClient extends Connection {
     }
 
     /**
-      * Request the volume of a zone. This command returns the volume even if the zone requested is in mute.
-      *
-      * @method getVolume
-      * @return {Promise} [A response]
-      */
+     * Request the volume of a zone. This command returns the volume even if the zone requested is in mute.
+     *
+     * @method getVolume
+     * @return {Promise} [A response]
+     */
     getVolume() {
-        return this.sendCommand(Options.VolumeOptions.Command, Options.VolumeOptions.Status, this.getEvent('masterVolume'));
+        return this.sendCommand(
+            Options.VolumeOptions.Command,
+            Options.VolumeOptions.Status,
+            this.getEvent("masterVolume"),
+        );
     }
 
     setMute(mute) {
@@ -178,24 +183,32 @@ class ArcamClient extends Connection {
     }
 
     /**
-      * Request the mute status of the audio in a zone.
-      *
-      * @method getMute
-      * @return {Promise} [A response]
-      */
+     * Request the mute status of the audio in a zone.
+     *
+     * @method getMute
+     * @return {Promise} [A response]
+     */
     getMute() {
-        return this.sendCommand(Options.MuteOptions.Command, Options.MuteOptions.Status, this.getEvent('mute'));
+        return this.sendCommand(
+            Options.MuteOptions.Command,
+            Options.MuteOptions.Status,
+            this.getEvent("mute"),
+        );
     }
 
     /**
-      * Heartbeat command to check unit is still connected and communication - also resets the EuP standby timer.
-      *
-      * @method heartbeat
-      * @return {Promise}
-      */
+     * Heartbeat command to check unit is still connected and communication - also resets the EuP standby timer.
+     *
+     * @method heartbeat
+     * @return {Promise}
+     */
     heartbeat() {
-        return this.sendCommand(Options.HeartbeatOptions.Command, Options.HeartbeatOptions.Status, this.getEvent('heartbeat'));
+        return this.sendCommand(
+            Options.HeartbeatOptions.Command,
+            Options.HeartbeatOptions.Status,
+            this.getEvent("heartbeat"),
+        );
     }
 }
 
-module.exports = ArcamClient
+module.exports = ArcamClient;

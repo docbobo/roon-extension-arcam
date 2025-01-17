@@ -1,8 +1,8 @@
-'use strict';
+"use strict";
 
-const MuteOptions      = require('./options/mute_options'),
-      VolumeOptions    = require('./options/volume_options'),
-      HeartbeatOptions = require('./options/heartbeat_options')
+const MuteOptions = require("./options/mute_options"),
+    VolumeOptions = require("./options/volume_options"),
+    HeartbeatOptions = require("./options/heartbeat_options");
 
 module.exports = {
     /**
