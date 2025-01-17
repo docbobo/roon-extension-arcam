@@ -1,4 +1,4 @@
-'use strict';
+"use strict";
 
 /**
  * The volume options
@@ -7,5 +7,5 @@
  */
 module.exports = {
     Command: 0x0d,
-    Status: 0xf0
+    Status: 0xf0,
 };

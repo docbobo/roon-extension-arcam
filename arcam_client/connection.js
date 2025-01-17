@@ -1,11 +1,10 @@
-'use strict';
+"use strict";
 
-const net = require('net'),
-      EventEmitter = require('events'),
-      Promise = require('bluebird');
+const net = require("net"),
+    EventEmitter = require("events"),
+    Promise = require("bluebird");
 
 class Connection extends EventEmitter {
-
     get host() {
         return this._host;
     }
@@ -30,26 +29,26 @@ class Connection extends EventEmitter {
     initializeSocket() {
         this._socket = new net.Socket();
 
-        this.socket.on('data', (data) => {
-            this.emit('data', data);
+        this.socket.on("data", (data) => {
+            this.emit("data", data);
         });
 
-        this.socket.on('close', () => {
-            this.emit('close');
+        this.socket.on("close", () => {
+            this.emit("close");
         });
 
-        this.socket.on('error', (error) => {
-            this.emit('error', error);
+        this.socket.on("error", (error) => {
+            this.emit("error", error);
         });
 
-        this.socket.on('connect', () => {
-            this.emit('connect');
+        this.socket.on("connect", () => {
+            this.emit("connect");
         });
     }
 
     write(command) {
         return new Promise((resolve) => {
-            this.socket.write(command, 'buffer', resolve);
+            this.socket.write(command, "buffer", resolve);
         });
     }
 
@@ -57,14 +56,14 @@ class Connection extends EventEmitter {
         return new Promise((resolve, reject) => {
             this.initializeSocket();
 
-            this.socket.once('connect', () => {
+            this.socket.once("connect", () => {
                 resolve();
-                this.socket.removeListener('error', reject);
+                this.socket.removeListener("error", reject);
             });
 
-            this.socket.once('error', (error) => {
+            this.socket.once("error", (error) => {
                 reject(error);
-                this.socket.removeListener('connect', resolve);
+                this.socket.removeListener("connect", resolve);
             });
 
             this.socket.connect(this.port, this.host);

@@ -1,16 +1,18 @@
-ARG build_arch=arm64
+FROM node:23-alpine3.21
 
-FROM multiarch/alpine:${build_arch}-v3.12
-
-RUN mkdir -p /usr/src/app
-
+# Create app directory
 WORKDIR /usr/src/app
 
-COPY arcam_client/ /usr/src/app/arcam_client/
-COPY app.js LICENSE package.json /usr/src/app/
+# Install app dependencies
+# A wildcard is used to ensure both package.json AND package-lock.json are copied
+# where available (npm@5+)
+COPY package*.json ./
 
-RUN apk add --no-cache nodejs tzdata git npm && \
-    npm install && \
-    apk del git npm
+RUN npm install
+# If you are building your code for production
+# RUN npm ci --only=production
 
-CMD [ "node", "." ]
+# Bundle app source
+COPY . .
+
+CMD [ "node", "app.js" ]
