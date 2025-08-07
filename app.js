@@ -9,6 +9,43 @@ const debug = require("debug")("roon-extension-arcam"),
     RoonApiStatus = require("node-roon-api-status"),
     RoonApiVolumeControl = require("node-roon-api-volume-control");
 
+/**
+ * Format connection errors into user-friendly messages
+ * @param {Error} error - The connection error
+ * @returns {string} Formatted error message for users
+ */
+function formatConnectionError(error) {
+    if (!error) {
+        return "Unknown connection error occurred";
+    }
+
+    // Handle specific error types with actionable guidance
+    switch (error.code) {
+        case 'ECONNREFUSED':
+            return `Cannot connect to receiver: Connection refused. Please verify the receiver is powered on and the IP address is correct.`;
+        
+        case 'EHOSTUNREACH':
+            return `Cannot reach receiver: Host unreachable. Please check your network connection and firewall settings.`;
+        
+        case 'ETIMEDOUT':
+            return `Connection timed out: Receiver did not respond. Please verify the receiver is on the same network and port 50000 is accessible.`;
+        
+        case 'ENOTFOUND':
+            return `Hostname not found: Cannot resolve receiver address. Please verify the hostname or use an IP address instead.`;
+        
+        case 'ECONNRESET':
+            return `Connection reset by receiver: The receiver closed the connection unexpectedly. This may be temporary.`;
+        
+        case 'ENETUNREACH':
+            return `Network unreachable: Cannot route to receiver. Please check your network configuration.`;
+        
+        default:
+            // For unknown errors, provide the error message but keep it user-friendly
+            const message = error.message || error.toString();
+            return `Connection failed: ${message}. Please check receiver power, network connection, and settings.`;
+    }
+}
+
 var arcam = {};
 var roon = new RoonApi({
     extension_id: "org.pruessmann.roon.arcam",
@@ -138,12 +175,10 @@ function setup_arcam_connection(host, keepalive) {
                     "setup_arcam_connection: Error during setup. Retrying...",
                 );
 
-                // TODO: Fix error message
-                console.log(error);
-                svc_status.set_status(
-                    "Could not connect receiver: " + error,
-                    true,
-                );
+                // Enhanced error handling with structured messages
+                const errorMessage = formatConnectionError(error);
+                debug("Connection error details: %O", error);
+                svc_status.set_status(errorMessage, true);
             });
 
         arcam.keepalive = setInterval(() => {
@@ -190,9 +225,7 @@ function create_volume_control(arcam) {
                         req.send_complete("Success");
                     })
                     .catch((error) => {
-                        debug("set_volume: Failed with error.");
-
-                        console.log(error);
+                        debug("set_volume: Failed with error: %O", error);
                         req.send_complete("Failed");
                     });
             },
@@ -212,9 +245,7 @@ function create_volume_control(arcam) {
                         req.send_complete("Success");
                     })
                     .catch((error) => {
-                        debug("set_mute: Failed.");
-
-                        console.log(error);
+                        debug("set_mute: Failed with error: %O", error);
                         req.send_complete("Failed");
                     });
             },
@@ -232,7 +263,7 @@ function create_volume_control(arcam) {
                 arcam.volume_control = svc_volume_control.new_device(device);
             },
         ).catch((error) => {
-            console.log(error);
+            debug("create_volume_control: Failed to initialize device: %O", error);
         });
     }
 
