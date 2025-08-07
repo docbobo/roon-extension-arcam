@@ -10,41 +10,164 @@ const debug = require("debug")("roon-extension-arcam"),
     RoonApiVolumeControl = require("node-roon-api-volume-control");
 
 /**
- * Format connection errors into user-friendly messages
- * @param {Error} error - The connection error
- * @returns {string} Formatted error message for users
+ * Structured error codes for different failure scenarios
  */
-function formatConnectionError(error) {
-    if (!error) {
-        return "Unknown connection error occurred";
-    }
+const ErrorCodes = {
+    // Connection errors (1000-1999)
+    CONNECTION_REFUSED: { code: 1001, category: 'CONNECTION', severity: 'HIGH' },
+    CONNECTION_TIMEOUT: { code: 1002, category: 'CONNECTION', severity: 'HIGH' },
+    HOST_UNREACHABLE: { code: 1003, category: 'CONNECTION', severity: 'HIGH' },
+    HOST_NOT_FOUND: { code: 1004, category: 'CONNECTION', severity: 'HIGH' },
+    CONNECTION_RESET: { code: 1005, category: 'CONNECTION', severity: 'MEDIUM' },
+    NETWORK_UNREACHABLE: { code: 1006, category: 'CONNECTION', severity: 'HIGH' },
+    CONNECTION_UNKNOWN: { code: 1999, category: 'CONNECTION', severity: 'MEDIUM' },
+    
+    // Protocol errors (2000-2999)
+    PROTOCOL_PARSE_ERROR: { code: 2001, category: 'PROTOCOL', severity: 'HIGH' },
+    PROTOCOL_TIMEOUT: { code: 2002, category: 'PROTOCOL', severity: 'MEDIUM' },
+    PROTOCOL_INVALID_RESPONSE: { code: 2003, category: 'PROTOCOL', severity: 'MEDIUM' },
+    
+    // Device errors (3000-3999)
+    DEVICE_NOT_CONFIGURED: { code: 3001, category: 'DEVICE', severity: 'HIGH' },
+    DEVICE_INITIALIZATION_FAILED: { code: 3002, category: 'DEVICE', severity: 'HIGH' },
+    DEVICE_COMMAND_FAILED: { code: 3003, category: 'DEVICE', severity: 'MEDIUM' },
+    
+    // System errors (4000-4999)
+    SYSTEM_INTERNAL_ERROR: { code: 4001, category: 'SYSTEM', severity: 'HIGH' },
+    SYSTEM_RESOURCE_ERROR: { code: 4002, category: 'SYSTEM', severity: 'MEDIUM' }
+};
 
-    // Handle specific error types with actionable guidance
-    switch (error.code) {
-        case 'ECONNREFUSED':
+/**
+ * Create structured error with code, category and user message
+ * @param {string} errorType - Error type from ErrorCodes
+ * @param {Error} originalError - Original error object
+ * @param {string} context - Additional context information
+ * @returns {Object} Structured error object
+ */
+function createStructuredError(errorType, originalError, context = '') {
+    const errorInfo = ErrorCodes[errorType] || ErrorCodes.SYSTEM_INTERNAL_ERROR;
+    
+    return {
+        code: errorInfo.code,
+        category: errorInfo.category,
+        severity: errorInfo.severity,
+        type: errorType,
+        message: getErrorMessage(errorType, originalError),
+        originalError: originalError,
+        context: context,
+        timestamp: new Date().toISOString()
+    };
+}
+
+/**
+ * Get user-friendly error message based on error type
+ * @param {string} errorType - Error type from ErrorCodes
+ * @param {Error} originalError - Original error object
+ * @returns {string} User-friendly error message
+ */
+function getErrorMessage(errorType, originalError) {
+    switch (errorType) {
+        case 'CONNECTION_REFUSED':
             return `Cannot connect to receiver: Connection refused. Please verify the receiver is powered on and the IP address is correct.`;
         
-        case 'EHOSTUNREACH':
+        case 'HOST_UNREACHABLE':
             return `Cannot reach receiver: Host unreachable. Please check your network connection and firewall settings.`;
         
-        case 'ETIMEDOUT':
+        case 'CONNECTION_TIMEOUT':
             return `Connection timed out: Receiver did not respond. Please verify the receiver is on the same network and port 50000 is accessible.`;
         
-        case 'ENOTFOUND':
+        case 'HOST_NOT_FOUND':
             return `Hostname not found: Cannot resolve receiver address. Please verify the hostname or use an IP address instead.`;
         
-        case 'ECONNRESET':
+        case 'CONNECTION_RESET':
             return `Connection reset by receiver: The receiver closed the connection unexpectedly. This may be temporary.`;
         
-        case 'ENETUNREACH':
+        case 'NETWORK_UNREACHABLE':
             return `Network unreachable: Cannot route to receiver. Please check your network configuration.`;
         
+        case 'DEVICE_NOT_CONFIGURED':
+            return `Device not configured: Please check settings and provide a valid receiver hostname or IP address.`;
+        
+        case 'DEVICE_INITIALIZATION_FAILED':
+            return `Device initialization failed: Could not set up volume control. Please check receiver compatibility.`;
+        
+        case 'DEVICE_COMMAND_FAILED':
+            return `Command failed: The receiver did not respond to the volume or mute command. Please try again.`;
+        
+        case 'PROTOCOL_PARSE_ERROR':
+            return `Protocol error: Invalid response from receiver. Please check receiver firmware compatibility.`;
+        
+        case 'PROTOCOL_TIMEOUT':
+            return `Protocol timeout: Receiver did not respond within expected time. Connection may be unstable.`;
+        
+        case 'PROTOCOL_INVALID_RESPONSE':
+            return `Invalid response: Receiver sent unexpected data. Please check receiver model compatibility.`;
+        
         default:
-            // For unknown errors, provide the error message but keep it user-friendly
-            const message = error.message || error.toString();
+            const message = originalError?.message || originalError?.toString() || 'Unknown error';
             return `Connection failed: ${message}. Please check receiver power, network connection, and settings.`;
     }
 }
+
+/**
+ * Map native Node.js errors to structured error types
+ * @param {Error} error - Native Node.js error
+ * @returns {string} Mapped error type from ErrorCodes
+ */
+function mapNativeErrorToType(error) {
+    if (!error || !error.code) {
+        return 'CONNECTION_UNKNOWN';
+    }
+    
+    switch (error.code) {
+        case 'ECONNREFUSED': return 'CONNECTION_REFUSED';
+        case 'EHOSTUNREACH': return 'HOST_UNREACHABLE';
+        case 'ETIMEDOUT': return 'CONNECTION_TIMEOUT';
+        case 'ENOTFOUND': return 'HOST_NOT_FOUND';
+        case 'ECONNRESET': return 'CONNECTION_RESET';
+        case 'ENETUNREACH': return 'NETWORK_UNREACHABLE';
+        default: return 'CONNECTION_UNKNOWN';
+    }
+}
+
+/**
+ * Format connection errors into user-friendly messages with structured error codes
+ * @param {Error} error - The connection error
+ * @param {string} context - Additional context information
+ * @returns {Object} Structured error object with user message
+ */
+function formatConnectionError(error, context = '') {
+    if (!error) {
+        return createStructuredError('SYSTEM_INTERNAL_ERROR', null, context);
+    }
+
+    const errorType = mapNativeErrorToType(error);
+    return createStructuredError(errorType, error, context);
+}
+
+/**
+ * Check if error is critical and requires immediate attention
+ * @param {Object} structuredError - Structured error object
+ * @returns {boolean} True if error is critical
+ */
+function isCriticalError(structuredError) {
+    return structuredError.severity === 'HIGH' || 
+           ['DEVICE_NOT_CONFIGURED', 'CONNECTION_REFUSED', 'HOST_NOT_FOUND'].includes(structuredError.type);
+}
+
+/**
+ * Get error category for grouping and filtering
+ * @param {Object} structuredError - Structured error object
+ * @returns {string} Error category
+ */
+function getErrorCategory(structuredError) {
+    return structuredError.category;
+}
+
+/**
+ * Export error codes for external use (testing, logging, monitoring)
+ */
+const ERROR_CODES = ErrorCodes;
 
 var arcam = {};
 var roon = new RoonApi({
@@ -127,8 +250,9 @@ function setup_arcam_connection(host, keepalive) {
     }
 
     if (!host) {
-        debug("Not configured, please check settings.");
-        svc_status.set_status("Not configured, please check settings.", true);
+        const configError = createStructuredError('DEVICE_NOT_CONFIGURED', null, 'setup_arcam_connection');
+        debug("Device not configured [%d]: %s", configError.code, configError.type);
+        svc_status.set_status(configError.message, true);
     } else {
         debug("Connecting to receiver...");
         svc_status.set_status("Connecting to '" + host + "'...", false);
@@ -176,9 +300,9 @@ function setup_arcam_connection(host, keepalive) {
                 );
 
                 // Enhanced error handling with structured messages
-                const errorMessage = formatConnectionError(error);
-                debug("Connection error details: %O", error);
-                svc_status.set_status(errorMessage, true);
+                const structuredError = formatConnectionError(error, 'setup_arcam_connection');
+                debug("Connection error [%d]: %s - %O", structuredError.code, structuredError.type, structuredError);
+                svc_status.set_status(structuredError.message, true);
             });
 
         arcam.keepalive = setInterval(() => {
@@ -225,7 +349,8 @@ function create_volume_control(arcam) {
                         req.send_complete("Success");
                     })
                     .catch((error) => {
-                        debug("set_volume: Failed with error: %O", error);
+                        const structuredError = createStructuredError('DEVICE_COMMAND_FAILED', error, 'set_volume');
+                        debug("Volume command failed [%d]: %s - %O", structuredError.code, structuredError.type, structuredError);
                         req.send_complete("Failed");
                     });
             },
@@ -245,7 +370,8 @@ function create_volume_control(arcam) {
                         req.send_complete("Success");
                     })
                     .catch((error) => {
-                        debug("set_mute: Failed with error: %O", error);
+                        const structuredError = createStructuredError('DEVICE_COMMAND_FAILED', error, 'set_mute');
+                        debug("Mute command failed [%d]: %s - %O", structuredError.code, structuredError.type, structuredError);
                         req.send_complete("Failed");
                     });
             },
@@ -263,7 +389,8 @@ function create_volume_control(arcam) {
                 arcam.volume_control = svc_volume_control.new_device(device);
             },
         ).catch((error) => {
-            debug("create_volume_control: Failed to initialize device: %O", error);
+            const structuredError = createStructuredError('DEVICE_INITIALIZATION_FAILED', error, 'create_volume_control');
+            debug("Device initialization failed [%d]: %s - %O", structuredError.code, structuredError.type, structuredError);
         });
     }
 
