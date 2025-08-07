@@ -197,7 +197,7 @@ const RoonArcamExtension = (() => {
     };
 
 function make_layout(settings) {
-    var l = {
+    const l = {
         values: settings,
         layout: [],
         has_error: false,
@@ -226,7 +226,7 @@ function make_layout(settings) {
             });
 
             if (!isdryrun && !l.has_error) {
-                var old_hostname = state.settings.hostname;
+                const old_hostname = state.settings.hostname;
                 state.settings = l.values;
                 state.services.settings.update_settings(l);
                 if (old_hostname != state.settings.hostname)
@@ -332,7 +332,7 @@ function make_layout(settings) {
     function create_volume_control(arcam, appState) {
         debug("create_volume_control: volume_control=%o", arcam.volume_control);
 
-        var result = arcam.client;
+        let result = arcam.client;
         if (!arcam.volume_control) {
             arcam.state = {
                 control_key: 1,
@@ -343,7 +343,7 @@ function make_layout(settings) {
                 volume_step: 1,
             };
 
-        var device = {
+        const device = {
             state: arcam.state,
 
             set_volume: function (req, mode, value) {
